@@ -6,8 +6,8 @@ import streamlit as st
 st.title("Create and chat with your own chatbot.")
 
 # Load pre-trained Tiny Llama model and tokenizer
-tokenizer = LlamaTokenizer.from_pretrained("huggingface/tinybert")
-model = LlamaForCausalLM.from_pretrained("hugginface/tinybert")
+tokenizer = LlamaTokenizer.from_pretrained("llama3.2")
+model = LlamaForCausalLM.from_pretrained("llama3.2")
 
 # Initialize context and conversation history
 context = st.text_input("What is the purpose you want your chatbot for?")
