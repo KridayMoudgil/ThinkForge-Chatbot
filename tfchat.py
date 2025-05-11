@@ -1,30 +1,38 @@
 import streamlit as st
 from transformers import pipeline
 
-# Initialize the Hugging Face model pipeline (GPT-Neo 1.3B, GPT-J 6B, etc.)
-# You can choose from a range of models that are small and efficient
-generator = pipeline('text-generation', model='EleutherAI/gpt-neo-1.3B')
+# Load the lightweight model (free + no API key)
+@st.cache_resource
+def load_model():
+    return pipeline("text-generation", model="distilgpt2")
 
-# Title of the App
-st.title('Q&A Chatbot')
+generator = load_model()
 
-# Sidebar for settings
-st.sidebar.title('Settings')
+# Title
+st.title("Simple Chatbot (Offline, No API)")
 
-# Domain selection (optional, you can also let users type this)
-domain = st.sidebar.text_input('Assistant Expertise Domain (e.g. Python, AI, Math):', value='General Knowledge')
+# Initialize chat history
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-# Main interface for user input
-st.write('Go ahead and ask any question')
-user_input = st.text_input('You:')
+# Display chat history
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
+
+# Chat input box
+user_input = st.chat_input("Ask something...")
 
 if user_input:
-    # Generate the response using the selected Hugging Face model
-    try:
-        response = generator(user_input, max_length=150, num_return_sequences=1)
-        st.write(response[0]['generated_text'])
-    except Exception as e:
-        st.write(f"Error occurred: {str(e)}")
-else:
-    st.write('Please provide the query.')
+    # Save user message
+    st.session_state.messages.append({"role": "user", "content": user_input})
+    with st.chat_message("user"):
+        st.markdown(user_input)
 
+    # Generate response
+    with st.chat_message("assistant"):
+        bot_response = generator(user_input, max_length=100, num_return_sequences=1)[0]['generated_text']
+        # Post-process to remove user input from output
+        bot_reply = bot_response[len(user_input):].strip()
+        st.markdown(bot_reply)
+        st.session_state.messages.append({"role": "assistant", "content": bot_reply})
