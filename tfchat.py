@@ -4,7 +4,7 @@ from transformers import pipeline
 # Load the lightweight model (free + no API key)
 @st.cache_resource
 def load_model():
-    return pipeline("text-generation", model="microsoft/phi-2")
+    return pipeline("text-generation", model="Qwen/Qwen1.5-1.8B-Chat")
 
 generator = load_model()
 
