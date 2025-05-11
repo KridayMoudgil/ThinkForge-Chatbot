@@ -4,7 +4,7 @@ from transformers import pipeline
 # Load the lightweight model (free + no API key)
 @st.cache_resource
 def load_model():
-    return pipeline("text-generation", model="TinyLlama/TinyLlama-1.1B-Chat-v1.0")
+    return pipeline("text-generation", model="google/flan-t5-small")
 
 generator = load_model()
 
