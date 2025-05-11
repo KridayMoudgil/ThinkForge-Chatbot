@@ -1,38 +1,72 @@
-from transformers import LlamaTokenizer, LlamaForCausalLM
-import torch
-import streamlit as st
+import os
+from dotenv import load_dotenv
+import streamlit as st 
+from langchain_groq import ChatGroq
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser 
 
-# Set up Streamlit app title
-st.title("Create and chat with your own chatbot.")
+load_dotenv()
 
-# Load pre-trained Tiny Llama model and tokenizer
-tokenizer = LlamaTokenizer.from_pretrained("TinyLlama/TinyLlama-1.1B-Chat-v1.0")
-model = LlamaForCausalLM.from_pretrained("TinyLlama/TinyLlama-1.1B-Chat-v1.0")
+# Langsmith tracking
+os.environ['LANGCHAIN_API_KEY'] = os.getenv('LANGCHAIN_API_KEY')
+os.environ['LANGCHAIN_TRACING_V2'] = 'true'
+os.environ['LANGCHAIN_PROJECT'] = 'Simple Q/A Chatbot with llama-4'
 
-# Initialize context and conversation history
-context = st.text_input("What is the purpose you want your chatbot for?")
-conversation_history = context + "\n"  # Start conversation with context
+# Prompt Template
+prompt = ChatPromptTemplate.from_messages(
+    [
+        ('system','You are a helpful assistant. Please respond to the user queries.'),
+        ('user','question:{question}')
+    ]
+)
 
-# Input field for user query
-user_input = st.text_input("You: ")
+def generate_response(question,api_key,model_name,temperature,max_tokens):
+    llm = ChatGroq(
+        model = model_name,
+        groq_api_key=api_key,
+        temperature=temperature,
+        max_tokens=max_tokens
+    )
+    parser = StrOutputParser()
+    chain = prompt|llm|parser
+    answer = chain.invoke({'question':question})
+    return answer
+
+# Title of the App
+st.title('Q&A Chatbot')
+
+# Sidelbar for settings and API key
+st.sidebar.title('Settings')
+api_key = st.sidebar.text_input('Enter your GROQ API key here.',type='password')
+
+# Drop down to select various GROQ supported models
+selected_model = st.sidebar.selectbox(
+    'Select a Model',
+    [
+        "deepseek-r1-distill-llama-70b",
+        "meta-llama/llama-4-maverick-17b-128e-instruct",
+        "meta-llama/llama-4-scout-17b-16e-instruct",
+        "gemma2-9b-it",
+        "qwen-qwq-32b"
+    ]
+)
+
+# Temperature and Max Tokens
+temperature = st.sidebar.slider('Temperature', min_value=0.0, max_value=1.0, value=0.7)
+max_tokens = st.sidebar.slider('Max Tokens', min_value=100, max_value=900, value=250)
+
+# Domain selection (optional, you can also let users type this)
+domain = st.sidebar.text_input('Assistant Expertise Domain (e.g. Python, AI, Math):', value='General Knowledge')
+
+# Main interface for user input
+st.write('Go ahead and ask any question')
+user_input = st.text_input('You:')
 
 if user_input:
-    # Append user input to the conversation history
-    conversation_history += f"You: {user_input}\n"
-
-    # Encode the conversation history and user input
-    inputs = tokenizer(conversation_history, return_tensors="pt", truncation=True, max_length=1024)
-
-    # Generate a response from the model
-    with torch.no_grad():
-        outputs = model.generate(**inputs, max_length=1024, num_return_sequences=1)
-
-    # Decode the model's response
-    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
-
-    # Extract only the response part from the model's output
-    model_response = response[len(conversation_history):].strip()
-
-    # Display model's response and update conversation history
-    st.write(f"Tiny Llama: {model_response}")
-    conversation_history += f"Tiny Llama: {model_response}\n"
+    if not api_key:
+        st.write('Please enter your GROQ API key in the  slidebar.')
+    else:
+        response = generate_response(user_input,api_key,selected_model,temperature,max_tokens)
+        st.write(response)
+else:
+    st.write('Please provide the query.')
